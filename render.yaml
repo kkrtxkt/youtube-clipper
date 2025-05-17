@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: youtube-clipper
+    env: node
+    buildCommand: ./build.sh
+    startCommand: npm start
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
