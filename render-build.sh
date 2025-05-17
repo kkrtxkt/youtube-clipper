@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Stop the script if anything fails
-set -o errexit
-
-# Install yt-dlp and ffmpeg
+# Install yt-dlp (Render supports apt-get)
 apt-get update && apt-get install -y yt-dlp ffmpeg
 
-# Run the normal Next.js build
+# Install dependencies
+npm install
+
+# Build the Next.js app
 npm run build
