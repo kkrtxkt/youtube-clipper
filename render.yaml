@@ -2,8 +2,9 @@ services:
   - type: web
     name: youtube-clipper
     env: node
-    buildCommand: ./build.sh
-    startCommand: npm start
+    buildCommand: ./render-build.sh
+    startCommand: npm run start
+    plan: free
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11
+      - key: NODE_VERSION
+        value: 18
