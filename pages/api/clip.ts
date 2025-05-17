@@ -27,11 +27,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Ensure temp directory exists
     fs.mkdirSync(outputDir, { recursive: true });
 
+    // Path to the locally installed yt-dlp binary (placed by render-build.sh)
+    const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp');
     const section = `*${start}-${end}`;
+
     const command =
       format === 'audio'
-        ? `yt-dlp --download-sections "${section}" -x --audio-format mp3 -o "${outputPath}" "${url}"`
-        : `yt-dlp --download-sections "${section}" --merge-output-format mp4 -o "${outputPath}" "${url}"`;
+        ? `"${ytDlpPath}" --download-sections "${section}" -x --audio-format mp3 -o "${outputPath}" "${url}"`
+        : `"${ytDlpPath}" --download-sections "${section}" --merge-output-format mp4 -o "${outputPath}" "${url}"`;
 
     await execPromise(command);
 
@@ -42,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const readStream = fs.createReadStream(outputPath);
     readStream.pipe(res);
 
-    // Delete the file after sending
+    // Delete the file after streaming is done
     readStream.on('close', () => {
       fs.unlink(outputPath, (err) => {
         if (err) console.error('Failed to delete temp file:', err);

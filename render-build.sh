@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
-# Install yt-dlp (Render supports apt-get)
-apt-get update && apt-get install -y yt-dlp ffmpeg
+# Make a local bin directory and add it to PATH
+mkdir -p ./bin
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./bin/yt-dlp
+chmod +x ./bin/yt-dlp
+export PATH=$PWD/bin:$PATH
 
-# Install dependencies
+# Save this PATH export in a .env file so your app can find it at runtime
+echo "PATH=$PWD/bin:\$PATH" >> .env
+
+# Install ffmpeg
+apt-get update && apt-get install -y ffmpeg
+
+# Continue with normal build
 npm install
-
-# Build the Next.js app
 npm run build
