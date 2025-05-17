@@ -1,8 +1,14 @@
 #!/bin/bash
 
-# Install Python and yt-dlp using pip
-echo "Installing yt-dlp..."
-pip install -r requirements.txt
+set -e
+
+# Install Python and yt-dlp
+echo "Installing Python and yt-dlp..."
+
+apt-get update
+apt-get install -y python3 python3-pip
+
+pip3 install yt-dlp
 
 # Install Node.js dependencies
 echo "Installing Node modules..."
