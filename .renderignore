@@ -1,0 +1,2 @@
+# Prevent secrets from being exposed to GitHub
+cookies.txt
