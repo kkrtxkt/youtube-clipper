@@ -1,27 +1,30 @@
-# Use official Node.js image
-FROM node:18-slim
+# Use base image
+FROM node:18-bullseye
 
-# Install ffmpeg and dependencies
-RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip curl && \
-    apt-get clean
+# Install Python, pip, ffmpeg
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv ffmpeg curl \
+    && apt-get clean
 
-# Install yt-dlp
-RUN pip install yt-dlp
+# Use virtualenv to install yt-dlp safely
+RUN python3 -m venv /venv \
+    && /venv/bin/pip install --upgrade pip \
+    && /venv/bin/pip install yt-dlp
+
+# Add virtualenv to PATH so you can call yt-dlp
+ENV PATH="/venv/bin:$PATH"
 
 # Set working directory
 WORKDIR /app
 
-# Copy files
+# Copy app code
 COPY . .
 
 # Install dependencies
 RUN npm install
 
-# Build Next.js app
+# Build app
 RUN npm run build
-
-# Expose port
-EXPOSE 3000
 
 # Start app
 CMD ["npm", "start"]
