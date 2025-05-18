@@ -5,12 +5,12 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip python3-venv ffmpeg curl \
     && apt-get clean
 
-# Set up Python virtual environment and install yt-dlp
+# Set up Python virtual environment
 RUN python3 -m venv /venv && \
     /venv/bin/pip install --upgrade pip && \
     /venv/bin/pip install yt-dlp
 
-# Add virtual env to PATH so yt-dlp is available globally
+# Add virtual env to PATH so yt-dlp works globally
 ENV PATH="/venv/bin:$PATH"
 
 # Set working directory
@@ -19,8 +19,8 @@ WORKDIR /app
 # Copy app files
 COPY . .
 
-# Make sure yt-dlp is executable (if you're bundling a binary, still safe)
-RUN chmod +x /venv/bin/yt-dlp
+# ⛏️ Fix permissions for yt-dlp
+RUN chmod +x /app/bin/yt-dlp
 
 # Install Node dependencies
 RUN npm install
