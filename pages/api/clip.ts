@@ -22,38 +22,71 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const ext = format === 'audio' ? 'mp3' : 'mp4';
   const outputDir = path.join(process.cwd(), 'temp');
   const outputPath = path.join(outputDir, `${id}.${ext}`);
+  const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp');
+  const section = `*${start}-${end}`;
 
   try {
     // Ensure temp directory exists
     fs.mkdirSync(outputDir, { recursive: true });
 
-    // Path to the locally installed yt-dlp binary (placed by render-build.sh)
-    const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp');
-    const section = `*${start}-${end}`;
+    const args = [
+      `"${ytDlpPath}"`,
+      '--download-sections',
+      `"${section}"`,
+    ];
 
-    const command =
-      format === 'audio'
-        ? `"${ytDlpPath}" --download-sections "${section}" -x --audio-format mp3 -o "${outputPath}" "${url}"`
-        : `"${ytDlpPath}" --download-sections "${section}" --merge-output-format mp4 -o "${outputPath}" "${url}"`;
+    if (format === 'audio') {
+      args.push('-x', '--audio-format', 'mp3');
+    } else {
+      args.push('--merge-output-format', 'mp4');
+    }
 
-    await execPromise(command);
+    // Check for cookies.txt
+    const cookiesPath = path.join(process.cwd(), 'bin', 'cookies.txt');
+    if (fs.existsSync(cookiesPath)) {
+      args.push('--cookies', `"${cookiesPath}"`);
+    }
 
-    // Stream the file to the client
+    // Optional proxy from environment variable
+    const proxy = process.env.YTDLP_PROXY;
+    if (proxy) {
+      args.push('--proxy', `"${proxy}"`);
+    }
+
+    args.push('-o', `"${outputPath}"`, `"${url}"`);
+
+    const fullCommand = args.join(' ');
+
+    const { stderr } = await execPromise(fullCommand);
+
+    // Check for HTTP 429 rate limit
+    if (stderr && stderr.includes('HTTP Error 429')) {
+      console.error('[clip.ts ERROR] Rate limited by YouTube');
+      return res.status(429).json({
+        error:
+          'YouTube is currently limiting access (HTTP 429). Try again later or use a different video.',
+      });
+    }
+
+    // Stream file to client
     res.setHeader('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="clip.${ext}"`);
 
     const readStream = fs.createReadStream(outputPath);
     readStream.pipe(res);
 
-    // Delete the file after streaming is done
     readStream.on('close', () => {
       fs.unlink(outputPath, (err) => {
         if (err) console.error('Failed to delete temp file:', err);
       });
     });
-
-  } catch (error) {
-    console.error('[clip.ts ERROR]', error);
-    res.status(500).json({ error: 'Something went wrong during processing.' });
+  } catch (error: any) {
+    console.error('[clip.ts ERROR]', error.stderr || error.message || error);
+    res.status(500).json({
+      error:
+        error.stderr && error.stderr.includes('429')
+          ? 'YouTube is currently rate limiting this server. Try again later.'
+          : 'Something went wrong during processing.',
+    });
   }
 }
