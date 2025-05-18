@@ -32,22 +32,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const args = [
       `"${ytDlpPath}"`,
       '--download-sections',
-      `"${section}"`,
+      `"${section}"`
     ];
 
+    // Format-specific flags
     if (format === 'audio') {
       args.push('-x', '--audio-format', 'mp3');
     } else {
       args.push('--merge-output-format', 'mp4');
     }
 
-    // Check for cookies.txt
+    // Add cookies.txt if available
     const cookiesPath = path.join(process.cwd(), 'bin', 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
       args.push('--cookies', `"${cookiesPath}"`);
     }
 
-    // Optional proxy from environment variable
+    // Add proxy if defined in environment
     const proxy = process.env.YTDLP_PROXY;
     if (proxy) {
       args.push('--proxy', `"${proxy}"`);
@@ -59,16 +60,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { stderr } = await execPromise(fullCommand);
 
-    // Check for HTTP 429 rate limit
+    // Check for rate-limiting
     if (stderr && stderr.includes('HTTP Error 429')) {
       console.error('[clip.ts ERROR] Rate limited by YouTube');
       return res.status(429).json({
-        error:
-          'YouTube is currently limiting access (HTTP 429). Try again later or use a different video.',
+        error: 'YouTube is currently limiting access (HTTP 429). Try again later.',
       });
     }
 
-    // Stream file to client
+    // Set headers and stream file
     res.setHeader('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="clip.${ext}"`);
 
@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (err) console.error('Failed to delete temp file:', err);
       });
     });
+
   } catch (error: any) {
     console.error('[clip.ts ERROR]', error.stderr || error.message || error);
     res.status(500).json({
