@@ -40,5 +40,6 @@ yarn-error.log*
 next-env.d.ts
 
 # sensitive or binary files
+# Hide cookies from GitHub
 cookies.txt
-bin/yt-dlp.exe
+bin/yt-dlp
