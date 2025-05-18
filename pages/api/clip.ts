@@ -12,6 +12,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Extend timeout to 10 minutes for long clips
+  res.setTimeout(10 * 60 * 1000);
+
   const { url, start, end, format } = req.body;
 
   if (!url || !start || !end || !format) {
@@ -30,8 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const args = [
       'yt-dlp',
-      '--download-sections',
-      `"${section}"`
+      '--download-sections', section,
+      '-o', outputPath
     ];
 
     // Format-specific flags
@@ -39,25 +42,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       args.push('-x', '--audio-format', 'mp3');
     } else {
       args.push('--merge-output-format', 'mp4');
+
+      // Optional: use lower quality for faster processing
+      args.push('-f', 'bv[ext=mp4]+ba[ext=m4a]/bestvideo+bestaudio/best');
     }
 
     // Add cookies.txt if available
     const cookiesPath = path.join(process.cwd(), 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
       console.log('✅ Using cookies from:', cookiesPath);
-      args.push('--cookies', `"${cookiesPath}"`);
+      args.push('--cookies', cookiesPath);
     } else {
       console.warn('⚠️ cookies.txt not found at', cookiesPath);
     }
 
-    // Add proxy if defined in environment
+    // Add proxy if defined
     const proxy = process.env.YTDLP_PROXY;
     if (proxy) {
-      args.push('--proxy', `"${proxy}"`);
       console.log('🧭 Using proxy:', proxy);
+      args.push('--proxy', proxy);
     }
-
-    args.push('-o', `"${outputPath}"`, `"${url}"`);
 
     const fullCommand = args.join(' ');
     console.log('▶️ Executing command:', fullCommand);
@@ -71,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Stream file
+    // Stream file to client
     res.setHeader('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="clip.${ext}"`);
 
