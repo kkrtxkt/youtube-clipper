@@ -43,20 +43,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Add cookies.txt if available
-    const cookiesPath = path.join(process.cwd(), 'bin', 'cookies.txt');
+    const cookiesPath = path.join(process.cwd(), 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
+      console.log('✅ Using cookies from:', cookiesPath); // <--- Debug log
       args.push('--cookies', `"${cookiesPath}"`);
+    } else {
+      console.warn('⚠️ cookies.txt not found at', cookiesPath);
     }
 
     // Add proxy if defined in environment
     const proxy = process.env.YTDLP_PROXY;
     if (proxy) {
       args.push('--proxy', `"${proxy}"`);
+      console.log('🧭 Using proxy:', proxy);
     }
 
     args.push('-o', `"${outputPath}"`, `"${url}"`);
 
     const fullCommand = args.join(' ');
+    console.log('▶️ Executing command:', fullCommand);
 
     const { stderr } = await execPromise(fullCommand);
 
