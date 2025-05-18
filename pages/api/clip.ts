@@ -1,18 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import util from 'util';
 
-const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Extend timeout to 10 minutes for long clips
+  // Extend timeout for longer downloads (10 minutes)
   res.setTimeout(10 * 60 * 1000);
 
   const { url, start, end, format } = req.body;
@@ -32,22 +32,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fs.mkdirSync(outputDir, { recursive: true });
 
     const args = [
-      'yt-dlp',
       '--download-sections', section,
       '-o', outputPath
     ];
 
-    // Format-specific flags
     if (format === 'audio') {
       args.push('-x', '--audio-format', 'mp3');
     } else {
       args.push('--merge-output-format', 'mp4');
-
-      // Optional: use lower quality for faster processing
       args.push('-f', 'bv[ext=mp4]+ba[ext=m4a]/bestvideo+bestaudio/best');
     }
 
-    // Add cookies.txt if available
+    // cookies.txt
     const cookiesPath = path.join(process.cwd(), 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
       console.log('✅ Using cookies from:', cookiesPath);
@@ -56,17 +52,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn('⚠️ cookies.txt not found at', cookiesPath);
     }
 
-    // Add proxy if defined
+    // Optional proxy
     const proxy = process.env.YTDLP_PROXY;
     if (proxy) {
       console.log('🧭 Using proxy:', proxy);
       args.push('--proxy', proxy);
     }
 
-    const fullCommand = args.join(' ');
-    console.log('▶️ Executing command:', fullCommand);
+    // Add the video URL last
+    args.push(url);
 
-    const { stderr } = await execPromise(fullCommand);
+    console.log('▶️ Executing:', 'yt-dlp', args.join(' '));
+
+    const { stderr } = await execFilePromise('yt-dlp', args);
 
     if (stderr && stderr.includes('HTTP Error 429')) {
       console.error('[clip.ts ERROR] Rate limited by YouTube');
@@ -75,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Stream file to client
+    // Stream result
     res.setHeader('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="clip.${ext}"`);
 
