@@ -81,11 +81,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     });
 
-  } catch (error: any) {
-    console.error('[clip.ts ERROR]', error.stderr || error.message || error);
+  } catch (error: unknown) {
+    const err = error as { stderr?: string; message?: string };
+    console.error('[clip.ts ERROR]', err.stderr || err.message || err);
     res.status(500).json({
       error:
-        error.stderr && error.stderr.includes('429')
+        err.stderr && err.stderr.includes('429')
           ? 'YouTube is currently rate limiting this server. Try again later.'
           : 'Something went wrong during processing.',
     });
