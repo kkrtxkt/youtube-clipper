@@ -22,7 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const ext = format === 'audio' ? 'mp3' : 'mp4';
   const outputDir = path.join(process.cwd(), 'temp');
   const outputPath = path.join(outputDir, `${id}.${ext}`);
-  const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp');
   const section = `*${start}-${end}`;
 
   try {
@@ -30,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fs.mkdirSync(outputDir, { recursive: true });
 
     const args = [
-      `"${ytDlpPath}"`,
+      'yt-dlp',
       '--download-sections',
       `"${section}"`
     ];
@@ -45,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Add cookies.txt if available
     const cookiesPath = path.join(process.cwd(), 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
-      console.log('✅ Using cookies from:', cookiesPath); // <--- Debug log
+      console.log('✅ Using cookies from:', cookiesPath);
       args.push('--cookies', `"${cookiesPath}"`);
     } else {
       console.warn('⚠️ cookies.txt not found at', cookiesPath);
@@ -65,7 +64,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { stderr } = await execPromise(fullCommand);
 
-    // Check for rate-limiting
     if (stderr && stderr.includes('HTTP Error 429')) {
       console.error('[clip.ts ERROR] Rate limited by YouTube');
       return res.status(429).json({
@@ -73,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Set headers and stream file
+    // Stream file
     res.setHeader('Content-Type', format === 'audio' ? 'audio/mpeg' : 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="clip.${ext}"`);
 
